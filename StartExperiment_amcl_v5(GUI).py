@@ -9,6 +9,7 @@ import sys
 from copy import copy
 from math import cos, sin, atan, asin, pi
 from PyQt5 import QtCore, QtGui, QtWidgets
+import random
 
 import rospy
 from sensor_msgs.msg import LaserScan
@@ -84,17 +85,21 @@ class Experiment(object):
     def start_experiment(self):
         global currentrewardlocation
         global angle_desired
-        #global appendInfo
+
+        currentreward = np.arange(len(self.rewardlocation))
+        random.shuffle(currentreward)
+        i = 0
+        print 'Reward location order:' ,currentreward
 
         while self._currenttrial < self.numtrials:
             
         
             print ('Trial %d beginning...' % self._currenttrial)
-            
-            
-            currentreward = np.random.choice(len(self.rewardlocation), 1)
-            currentrewardlocation = self.rewardlocation.iloc[currentreward]
-            
+            print 'Looking at reward location number:', currentreward[i]
+            #currentreward = np.random.choice(len(self.rewardlocation), 1)
+
+            currentrewardlocation = self.rewardlocation.iloc[currentreward[i]]
+
             small_rotation=atan(abs(currentrewardlocation['y1']-currentrewardlocation['y2']) / abs(currentrewardlocation['x1']-currentrewardlocation['x2']))
             #print (currentrewardlocation['y1'],currentrewardlocation['y2'],currentrewardlocation['x1'],currentrewardlocation['x2'])
             #print (small_rotation)
@@ -191,6 +196,7 @@ class Experiment(object):
                     os.system('play -n synth %s sin %s' % (0.15, (frequency-x*100)))
                     
             #cv2.destroyAllWindows()
+            i +=1
             self.updatetrial()  # Trial ended - start of next trial
 
     def realtime_elapsedtime(self, rewardloc, elapsedtime, robotloc,foundOrNot):
