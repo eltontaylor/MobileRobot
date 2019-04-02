@@ -1,20 +1,31 @@
 import sys
+import os
 
 from PyQt5 import *
-#from PyQt5.QtCore import *
-#from PyQt5.QtGui import *
 from PyQt5 import QtCore, QtGui, QtWidgets
-#from PyQt import QtCore, QtGui
+from PyQt5.QtWidgets import QLineEdit
+from PyQt5.QtCore import QDir
 from PyQt5.uic import loadUiType
 from PyQt5.uic import loadUi
+import main 
+from psychopy import core
 
-#import main #PYLINKWRAPPER NOT INSTALLED
-import os
-from StartExperiment_amcl_v4 import *
-from UserInput_v3 import *
-from StartExperiment_JOY_v5 import *
+import pandas as pd
+import numpy as np
+import rospy
+from math import cos, sin, atan, asin, pi
+
+from sensor_msgs.msg import LaserScan
+from geometry_msgs.msg import PoseWithCovarianceStamped
+from geometry_msgs.msg import Twist
+from sensor_msgs.msg import Joy
+import StartExperiment_amcl_v5_GUI 
+import UserInput_v3 
+import StartExperiment_JOY_v6 
 import utils
 import json
+import cv2
+import time
 import datetime
 
 Ui_MainWindow, QMainWindow = loadUiType("gui.ui")
@@ -23,9 +34,17 @@ Ui_MainWindow, QMainWindow = loadUiType("gui.ui")
 class Main(QtWidgets.QMainWindow, Ui_MainWindow):
     def __init__(self):
         super(Main, self).__init__()
+
+
         self.setupUi(self)
         self.start_button.clicked.connect(self.start)
+        #self.maze_startButton.clicked.connect(self.maze_start)
         self.load_button.clicked.connect(self.load)
+        
+        RewardLocationCSV = '/home/sinapse/Desktop/RewardData/rewardlocations.csv'
+        Rewardlocation = pd.read_csv(RewardLocationCSV, index_col=0)
+        RewardLocation = len(Rewardlocation)
+        #print 'Number of saved reward locations loaded : ', RewardLocation
 
         self.subject.setText("r")
         self.session.setText("1")
@@ -79,25 +98,27 @@ class Main(QtWidgets.QMainWindow, Ui_MainWindow):
         self.manual_calibration.setChecked(False)
         
         #Maze stuff
-        self.maze_Map.addItem("map1")
-        self.maze_Map.addItem("map2")
-        self.maze_Map.addItem("map3")
-        self.maze_Map.addItem("map4")
-        self.maze_Map.addItem("map5")
-        self.maze_Map.addItem("map6")
-        self.maze_Map.addItem("map7")
+        #self.maze_SelectDirectory.addItem("Directory Selection")
+        #self.maze_SelectDirectory.activated.connect(self.set_maze_Directory)
+        #self.maze_directoryDisplay.setText(QDir.home().dirName())
+        #self.maze_directoryDisplay.setReadOnly(True)
+
+        self.maze_Map.addItem("Select Directory")
         self.maze_Map.activated.connect(self.set_maze_Map)
-        self.maze_rewardLocation.setText("3")
+
+        self.maze_rewardLocation.setText(str(RewardLocation))
+        self.maze_rewardLocation.setReadOnly(True)
         self.maze_numberOfTrials.setText("3")
         self.maze_angleTolerance.setText("90")
+        self.maze_positionTolerance.setText("20") #in CM
         self.maze_destinationDuration.setText("2")
-        self.maze_trialDuration.setText("60") #in Seconds
+        self.maze_trialDuration.setText("80") #in Seconds
         self.maze_timeToStart.setText("5") #in Seconds
-        self.maze_ITI_Min.setText("7")    #in Seconds
-        self.maze_ITI_Max.setText("12")   #in Seconds
+        self.maze_ITI_Min.setText("1")    #in Seconds
+        self.maze_ITI_Max.setText("3")   #in Seconds
 
         # platform stuff
-        self.platform_clear_dist.setText("1.6") #need convert to metres default 1.2 [1.6 = 80 cm slow]
+        self.platform_clear_dist.setText("1.6") #need convert to metres default 1.2 [1.6 = 80cm slow]
         self.platform_stop_dist.setText("1.0")  #need convert to metres default 0.7 [1.0 = 60cm stop]
         self.platform_slowDownSpeed.setText("0.1") 
         self.platform_normalSpeed.setText("0.2")
@@ -159,6 +180,7 @@ class Main(QtWidgets.QMainWindow, Ui_MainWindow):
         if juicer_height:
             y = float(juicer_height)
             self.droprate.setText("%.3f" % (utils.calc_flowrate(y), ))
+
 
     def setMaskParams(self):
         if self.fixation_mask.currentText() == "gauss":
@@ -232,13 +254,15 @@ class Main(QtWidgets.QMainWindow, Ui_MainWindow):
                     idx = self.calibration_stimulus.findText(filename, QtCore.Qt.MatchFixedString)
                 self.calibration_stimulus.setCurrentIndex(idx)
 
+    def set_maze_Directory(self):
+        self.maze_SelectDirectory = QtWidgets.QFileDialog.getExistingDirectory(None, 'Select Directory', QDir.homePath(), QtWidgets.QFileDialog.ShowDirsOnly | QtWidgets.QFileDialog.DontResolveSymlinks)
+
     def set_maze_Map(self):
-        if self.maze_Map.currentText() == "map1":
-            #os.chdir("~/Desktop/MonkeyGUI-master")
-            filters = "Image only (*.jpg *.tiff *.png *.pgm *.jpeg)"
-            #filename, _filter = QtWidgets.QFileDialog.getOpenFileName(self, "set maze map" , os.getcwd(), filters)
-            filename = QtWidgets.QFileDialog.getOpenFileName(self, "set maze map" , os.getcwd(), filters)
-            #filename = QtGui.QFileDialog.getOpenFileName(self, "set_maze_map", os.getcwd(), filters)
+        filters = "Image only (*.jpg *.tiff *.png *.pgm *.jpeg)"
+        filename, _filter = QtWidgets.QFileDialog.getOpenFileName(self, "set maze map" , os.getcwd(), filters)
+        #filename = QtGui.QFileDialog.getOpenFileName(self, 'set maze map', os.getcwd(), 'All Files(*.*)', filters)
+
+
 
         if filename:
             idx = self.maze_Map.findText(filename, QtCore.Qt.MatchFixedString)
@@ -249,11 +273,30 @@ class Main(QtWidgets.QMainWindow, Ui_MainWindow):
 
 
 
+        #filename = QtWidgets.QFileDialog.getOpenFileName(self, "set maze map" , os.getcwd(), filters)
+        #filename = QtGui.QFileDialog.getOpenFileName(self, "set_maze_map", os.getcwd(), filters)
+        """
+        if filename:
+            idx = self.maze_Map.findText(filename, QtCore.Qt.MatchFixedString)
+            if idx < 0: # if not found, add the map
+                self.maze_Map.addItem(filename)
+                idx = self.maze_Map.findText(filename, QtCore.Qt.MatchFixedString)
+            self.maze_Map.setCurrentIndex(idx)"""
+        
+        """idx = self.maze_Map.findText(filename, QtCore.Qt.MatchFixedString)
+        files = filter(os.path.isfile, os.listdir(os.curdir))
+        images = len(os.listdir(os.getcwd()))
+        print (filename)"""
+
+
+
+
     def load(self):
         filters = "Settings files (*_settings.txt)"
         # TODO: Why is this not resolving symoblic links?
-        filename = QtGui.QFileDialog.getOpenFileName(self, "Load settings", os.getcwd(),
-                                                     filters)
+        #filename = QtGui.QFileDialog.getOpenFileName(self, "Load settings", os.getcwd(),filters)
+        filename, _filer = QtWidgets.QFileDialog.getOpenFileName(self, "Load settings", os.getcwd(),filters)
+
         if filename:
             exp_info = json.load(open(str(filename), "r"))
             self.subject.setText(exp_info.get("subject", "r"))
@@ -361,14 +404,15 @@ class Main(QtWidgets.QMainWindow, Ui_MainWindow):
             self.combos = exp_info.get("allowed_combos", [])
 
             #Maze
-            self.maze_rewardLocation.setText(str(exp_info.get("maze_rewardLocation", 3.0)))
+            self.maze_rewardLocation.setText(str(exp_info.get("maze_rewardlocation", 3.0)))
             self.maze_numberOfTrials.setText(str(exp_info.get("maze_numberOfTrials", 3.0)))
             self.maze_angleTolerance.setText(str(exp_info.get("maze_angleTolerance", 90)))
+            self.maze_positionTolerance.setText(str(exp_info.get("maze_positionTolerance", 15)))
             self.maze_destinationDuration.setText(str(exp_info.get("maze_destinationDuration", 2.0)))
             self.maze_trialDuration.setText(str(exp_info.get("maze_trialDuration", 60.0)))
             self.maze_timeToStart.setText(str(exp_info.get("maze_timeToStart", 5.0)))
-            self.maze_ITI_Min.setText(str(exp_info.get("maze_ITI_Min", 7.0)))
-            self.maze_ITI_Max.setText(str(exp_info.get("maze_ITI_Max", 12.0)))
+            self.maze_ITI_Min.setText(str(exp_info.get("maze_ITI_Min", 1.0)))
+            self.maze_ITI_Max.setText(str(exp_info.get("maze_ITI_Max", 5.0)))
 
             #Platform
             self.platform_clear_dist.setText(str(exp_info.get("platform_clear_dist", 1.2)))
@@ -378,10 +422,13 @@ class Main(QtWidgets.QMainWindow, Ui_MainWindow):
 
 
     def saveas(self):
-        filename = QtGui.QFileDialog.getSaveFileName(self, "Save settings", os.getcwd())
+        #filename = QtGui.QFileDialog.getSaveFileName(self, "Save settings", os.getcwd())
+        filename = QtWidgets.QFileDialog.getSaveFileName(self, "Save settings", os.getcwd())
+        
         if filename:
             exp_info = self.get_settings()
-            json.dump(exp_info, open(filename, "w"))
+            json.dump(exp_info, open('/home/sinapse/Desktop/MonkeyGUI-master/GUIsaved_settings.txt',"w"))
+            #json.dump(exp_info, open(filename, "w"))
 
     def show_target_preview(self):
         exp_info = self.get_settings()
@@ -440,6 +487,7 @@ class Main(QtWidgets.QMainWindow, Ui_MainWindow):
         maze_rewardLocation = float(self.maze_rewardLocation.text())
         maze_numberOfTrials = float(self.maze_numberOfTrials.text())
         maze_angleTolerance = float(self.maze_angleTolerance.text())
+        maze_positionTolerance = float(self.maze_positionTolerance.text())
         maze_destinationDuration = float(self.maze_destinationDuration.text())
         maze_trialDuration = float(self.maze_trialDuration.text())
         maze_timeToStart = float(self.maze_timeToStart.text())
@@ -546,6 +594,7 @@ class Main(QtWidgets.QMainWindow, Ui_MainWindow):
                     "maze_rewardLocation": maze_rewardLocation,
                     "maze_numberOfTrials": maze_numberOfTrials,
                     "maze_angleTolerance": maze_angleTolerance,
+                    "maze_positionTolerance" : maze_positionTolerance,
                     "maze_destinationDuration": maze_destinationDuration,
                     "maze_trialDuration": maze_trialDuration,
                     "maze_timeToStart": maze_timeToStart,
@@ -557,10 +606,96 @@ class Main(QtWidgets.QMainWindow, Ui_MainWindow):
                     "platform_slowDownSpeed": platform_slowDownSpeed}
         return exp_info
 
+    def AMCL(self):
+        #Initialize function initialparam at AMCL_v5_GUI start experiment results in the location being gone.
+        def get_xy_loc(msg):
+                #declare them as global variable
+                global loc_x
+                global loc_y
+                global orien_z
+                global orien_w
+                global loc_x_rotate
+                global loc_y_rotate
+                global angle_current
+                 
+                #assign the subsribed position value x&y to loc_x and loc_y
+                loc_x=msg.pose.pose.position.x
+                loc_y=msg.pose.pose.position.y
+                orien_z=msg.pose.pose.orientation.z
+                orien_w=msg.pose.pose.orientation.w
+                    
+                print(loc_x,loc_y,orien_z)
+                   
+                #convert the coordinate system from generated map into the reward location map coordinate system
+                angle_rotate = -0 #in radiance, anticlockwise is positive
+                size_x_map = 1088 #in pixel 1728 no difference when changed 3328
+                size_y_map = 1088 #in pixel 1156 no difference when changed 1952
+                locs_x_map_origin = -12.2 #in meter   //map7.yaml parameters (-31.4)
+                locs_y_map_origin = -13.8 #in meter  //map7.yaml parameters (-23.4)
+                 
+                loc_x=(loc_x - locs_x_map_origin)/0.025
+                loc_y=(-locs_y_map_origin - loc_y)/0.025
+                    
+                loc_x_new=loc_x-(size_x_map/2)
+                loc_y_new=loc_y-(size_y_map/2)
+                    
+                loc_x_rotate=loc_x_new*(cos(angle_rotate))-loc_y_new*(sin(angle_rotate))+(size_x_map/2)
+                loc_y_rotate=loc_y_new*(cos(angle_rotate))+loc_x_new*(sin(angle_rotate))+(size_y_map/2)
+                    
+                if(orien_z>=0) & (orien_w>=0):
+                    angle_current=asin(orien_z)*2
+                    
+                elif (orien_z>0) & (orien_w<0):
+                    angle_current=2*pi-asin(orien_z)*2
+                    
+                elif (orien_z<0) & (orien_w>0):
+                    angle_current=2*pi+asin(orien_z)*2
+                          
+
+        rospy.Subscriber("/amcl_pose", PoseWithCovarianceStamped, get_xy_loc)
+
+        DegToRad = pi/180
+        loc_x=0
+        loc_y=0
+        LocationMap = '/home/sinapse/catkin_ws/realworldmap_final3.pgm'  #change map  
+        RewardLocationCSV = '/home/sinapse/Desktop/RewardData/rewardlocations.csv'
+        orien_z=0
+        orien_w=0
+        loc_x_rotate=0
+        loc_y_rotate=0
+        current_orientation_w=0
+        current_orientation_z=0
+        angle_current=0
+        angle_desired=0
+      
+        frequency = 1100 # Hertz
+        # Define Experiment Parameters here
+        ExperimentNumber =2
+        ExperimentDate = '12032019'
+        MonkeyName = 'Chimpian'
+        Orientation=0
+        ExperimentFolder = '/home/sinapse/Desktop/RewardData/'  # Main folder for saving related data
+        
+        # Create a folder to save Experiment related parameters
+        SaveDataFolder = os.path.join(ExperimentFolder, ExperimentDate, str(ExperimentNumber) + '_' + MonkeyName)
+        if not os.path.exists(SaveDataFolder):
+            os.makedirs(SaveDataFolder)
+
+        # Save Experiment parameters
+        saveAMCL = StartExperiment_amcl_v5_GUI.SaveExpParameters(SaveDataFolder, ExperimentNumber=ExperimentNumber, ExperimentDate=ExperimentDate, MonkeyName=MonkeyName, NumberOfTrials=self.maze_numberOfTrials, RewardTimeOut=self.maze_trialDuration)
+
+        rospy.init_node('robot_pose', anonymous=True)
+
+        initAMCL = StartExperiment_amcl_v5_GUI.Experiment(self.maze_numberOfTrials, self.maze_trialDuration, Orientation, self.maze_angleTolerance, self.maze_positionTolerance, self.maze_destinationDuration, LocationMap, RewardLocationCSV, SaveDataFolder)
+
+    def maze_start(self):
+        startAMCL = self.AMCL()
+
     def start(self):
         exp_info = self.get_settings()
         print "Starting experiment"
-        self.results, status = main.run_experiment(exp_info, self.results)
+        #self.results, status = main.run_experiment(exp_info, self.results)
+        startAMCL = self.AMCL()
         if len(status) > 1:
             # Something happened
             dlg = QtGui.QErrorMessage(self)
@@ -573,6 +708,7 @@ class Main(QtWidgets.QMainWindow, Ui_MainWindow):
 
 if __name__ == "__main__":
     import sys 
+
     app = QtWidgets.QApplication(sys.argv)
     myapp = Main()
     myapp.show()

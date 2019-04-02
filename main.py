@@ -3,14 +3,15 @@ A simple fixation task in which the monkey is rewarded for maintaining fixation 
 flashed in the periphery.
 """
 import sys
+sys.path.insert(1, '/usr/local/lib/python2.7/dist-packages/')
 from psychopy import visual, core, monitors, logging, event, tools, data, parallel
 from matplotlib import pylab
 from matplotlib.pylab import mlab
 from psychopy import prefs
 prefs.general["audioLib"] = ["pygame"]
 from psychopy import sound
-#from pylink import pylinkwrapper
 from pylinkwrapper import *
+#import pylinkwrapper
 import numpy as np
 import numpy.lib.recfunctions
 import itertools

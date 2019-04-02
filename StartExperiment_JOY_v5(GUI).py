@@ -94,6 +94,7 @@ class processjoy(object):
             AverageLeft = SumLeft/length_left_laser_values
             #print('Average Values of Hokuyo Sensor from the Left:' , AverageLeft)
 
+
 def callback(data):
     laser_value = ProcessingJoyData.detect_objects_nearby()
 
@@ -198,9 +199,10 @@ def callback(data):
         FrontRightFlag = 3
 
     #print ('FrontFlag:', FrontFlag , 'RightFlag:', RightFlag ,'LeftFlag:', LeftFlag , 'FrontLeftFlag:', FrontLeftFlag , 'FrontRightFlag:', FrontRightFlag)
+    appendInfo = (AverageFront)
     print ('FrontFlag:', FrontFlag , 'RightFlag:', RightFlag ,'LeftFlag:', LeftFlag)
     #appendInfo = (FrontFlag, RightFlag, LeftFlag, FrontLeftFlag, FrontRightFlag)
-    appendInfo = (FrontFlag, RightFlag, LeftFlag)
+    #appendInfo = (FrontFlag, RightFlag, LeftFlag)
     saving()
     
     #Data.axis[1] = joystick moving front and back, data.axis[0] = joystick moving left and right
@@ -252,7 +254,7 @@ def saving():
     AI = appendInfo
     appendFile = open("/home/sinapse/Desktop/RewardData/LIDARData.txt", "a")
     #Save in a 2 by 2 array or it will print all integers vertically
-    np.savetxt(appendFile, [AI], fmt="%d", delimiter=",")  
+    np.savetxt(appendFile, [AI], fmt="%f", delimiter=",")  
     appendFile.close()
 
 def GetGUI():

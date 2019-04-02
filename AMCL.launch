@@ -1,0 +1,11 @@
+<launch>
+        <!-- Run amcl -->
+        <node name="amcl" pkg="amcl" type="amcl">
+        <param name ="update_min_d" value="0.05" />
+	<param name ="update_min_a" value="0.3" />
+	<remap from="/scan" to="base_scan" />
+
+
+</node>
+</launch>
+

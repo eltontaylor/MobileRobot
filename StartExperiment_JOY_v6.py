@@ -112,7 +112,7 @@ def callback(data):
     global FrontRightFlag
     global appendInfo
     clear = 0.9
-    stop = 0.4
+    stop = 0.5
     slowSpeed = 0.1
     fastSpeed = 0.4
     pub = rospy.Publisher('RosAria/cmd_vel', Twist, queue_size=1)
