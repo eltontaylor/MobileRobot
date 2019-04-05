@@ -317,9 +317,7 @@ def GetGUI(exp_info={}):
     global GUIsettings
     initGUI = gui.Main()
     GUIsettings = initGUI.get_settings()
-    #UNABLE TO GET DATA IF PARAMETERS ARE LOADED FROM GUI
     #exp_info.get("maze_trialDuration")
-    #print('this is the maze_trialDuration', exp_info.get("maze_trialDuration"))
 
 def initialparam():
     global frequency
@@ -348,7 +346,6 @@ def initialparam():
     LocationMap = '/home/sinapse/catkin_ws/realworldmap_final3_rotate.pgm'  #change map  
     RewardLocationCSV = '/home/sinapse/Desktop/RewardData/rewardlocations.csv'
     ExperimentFolder = '/home/sinapse/Desktop/RewardData/'  # Main folder for saving related data
-    #print 'finished executing initial parameters'
 
 
 if __name__ == '__main__':
