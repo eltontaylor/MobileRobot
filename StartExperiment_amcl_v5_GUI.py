@@ -246,7 +246,6 @@ class Experiment(object):
         """ Plot the reward location on the Map"""
         #resizeMap = cv2.resize(self.map,(10,10))
         #locationmap = copy(resizeMap)
-        print('stuck at 1')
         locationmap = copy(self.map)
         cv2.namedWindow('Trial %d Reward' % self._currenttrial, cv2.WINDOW_NORMAL)
         cv2.circle(locationmap, (rewardloc['x1'], rewardloc['y1']), 10, (0, 0, 255), 20)
@@ -308,7 +307,7 @@ def SaveExpParameters(ExperimentParamFolder, **kwargs):
 
 
 def SaveTrialParameters(appendInfo):
-    appendFile = open("/home/sinapse/Desktop/RewardData/12032019/2_Chimpian/ExperimentParameters.csv", "a")
+    appendFile = open("/home/sinapse/Desktop/RewardData/05042019/2_Chimpian/ExperimentParameters.csv", "a")
     #np.savetxt(appendFile,[[appendInfo]], delimiter=',', fmt='%35f')
     np.save(appendFile, [[appendInfo]])  
     appendFile.close()
@@ -344,12 +343,12 @@ def initialparam():
     ExperimentNumber =2
     Orientation=0
 
-    ExperimentDate = '12032019'
+    ExperimentDate = '05042019'
     MonkeyName = 'Chimpian'
-    LocationMap = '/home/sinapse/catkin_ws/realworldmap_final3.pgm'  #change map  
+    LocationMap = '/home/sinapse/catkin_ws/realworldmap_final3_rotate.pgm'  #change map  
     RewardLocationCSV = '/home/sinapse/Desktop/RewardData/rewardlocations.csv'
     ExperimentFolder = '/home/sinapse/Desktop/RewardData/'  # Main folder for saving related data
-    print 'finished executing initial parameters'
+    #print 'finished executing initial parameters'
 
 
 if __name__ == '__main__':
