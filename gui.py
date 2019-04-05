@@ -112,7 +112,7 @@ class Main(QtWidgets.QMainWindow, Ui_MainWindow):
         self.maze_angleTolerance.setText("90")
         self.maze_positionTolerance.setText("20") #in CM
         self.maze_destinationDuration.setText("2")
-        self.maze_trialDuration.setText("80") #in Seconds
+        self.maze_trialDuration.setText("8") #in Seconds
         self.maze_timeToStart.setText("5") #in Seconds
         self.maze_ITI_Min.setText("1")    #in Seconds
         self.maze_ITI_Max.setText("3")   #in Seconds
@@ -608,6 +608,7 @@ class Main(QtWidgets.QMainWindow, Ui_MainWindow):
 
     def AMCL(self):
         #Initialize function initialparam at AMCL_v5_GUI start experiment results in the location being gone.
+
         def get_xy_loc(msg):
                 #declare them as global variable
                 global loc_x
@@ -651,13 +652,14 @@ class Main(QtWidgets.QMainWindow, Ui_MainWindow):
                 elif (orien_z<0) & (orien_w>0):
                     angle_current=2*pi+asin(orien_z)*2
                           
+        exp_info = self.get_settings()
 
         rospy.Subscriber("/amcl_pose", PoseWithCovarianceStamped, get_xy_loc)
 
         DegToRad = pi/180
         loc_x=0
         loc_y=0
-        LocationMap = '/home/sinapse/catkin_ws/realworldmap_final3.pgm'  #change map  
+        LocationMap = '/home/sinapse/catkin_ws/realworldmap_final3_rotate.pgm'  #change map  
         RewardLocationCSV = '/home/sinapse/Desktop/RewardData/rewardlocations.csv'
         orien_z=0
         orien_w=0
@@ -682,13 +684,18 @@ class Main(QtWidgets.QMainWindow, Ui_MainWindow):
             os.makedirs(SaveDataFolder)
 
         # Save Experiment parameters
-        saveAMCL = StartExperiment_amcl_v5_GUI.SaveExpParameters(SaveDataFolder, ExperimentNumber=ExperimentNumber, ExperimentDate=ExperimentDate, MonkeyName=MonkeyName, NumberOfTrials=self.maze_numberOfTrials, RewardTimeOut=self.maze_trialDuration)
+        saveAMCL = StartExperiment_amcl_v5_GUI.SaveExpParameters(SaveDataFolder, ExperimentNumber=ExperimentNumber, ExperimentDate=ExperimentDate, MonkeyName=MonkeyName, NumberOfTrials=exp_info.get("maze_numberOfTrials"), RewardTimeOut=exp_info.get("maze_trialDuration"))
 
         rospy.init_node('robot_pose', anonymous=True)
-
-        initAMCL = StartExperiment_amcl_v5_GUI.Experiment(self.maze_numberOfTrials, self.maze_trialDuration, Orientation, self.maze_angleTolerance, self.maze_positionTolerance, self.maze_destinationDuration, LocationMap, RewardLocationCSV, SaveDataFolder)
+        print("NOT",exp_info.get("maze_numberOfTrials"))
+        print("TD", exp_info.get("maze_trialDuration"))
+        print("AT", exp_info.get("maze_angleTolerance"))
+        print("PT", exp_info.get("maze_positionTolerance"))
+        print("DD", exp_info.get("maze_destinationDuration"))
+        initAMCL = StartExperiment_amcl_v5_GUI.Experiment(exp_info.get("maze_numberOfTrials"), exp_info.get("maze_trialDuration"), Orientation, exp_info.get("maze_angleTolerance"), exp_info.get("maze_positionTolerance"), exp_info.get("maze_destinationDuration"), LocationMap, RewardLocationCSV, SaveDataFolder)
 
     def maze_start(self):
+        exp_info = self.get_settings()
         startAMCL = self.AMCL()
 
     def start(self):
